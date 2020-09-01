@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ecgmx", "ecgmx.vcxproj", "{32336245-4E34-41CD-8DAC-B5E1F36EB911}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ecgDataFormat", "..\ecgDataFormat\ecgDataFormat.vcxproj", "{74FEEB71-48F4-4060-BDD0-337BE43F6B8C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|VisualGDB = Debug|VisualGDB
+		Release|VisualGDB = Release|VisualGDB
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{32336245-4E34-41CD-8DAC-B5E1F36EB911}.Debug|VisualGDB.ActiveCfg = Debug|VisualGDB
+		{32336245-4E34-41CD-8DAC-B5E1F36EB911}.Debug|VisualGDB.Build.0 = Debug|VisualGDB
+		{32336245-4E34-41CD-8DAC-B5E1F36EB911}.Release|VisualGDB.ActiveCfg = Release|VisualGDB
+		{32336245-4E34-41CD-8DAC-B5E1F36EB911}.Release|VisualGDB.Build.0 = Release|VisualGDB
+		{74FEEB71-48F4-4060-BDD0-337BE43F6B8C}.Debug|VisualGDB.ActiveCfg = Debug|VisualGDB
+		{74FEEB71-48F4-4060-BDD0-337BE43F6B8C}.Debug|VisualGDB.Build.0 = Debug|VisualGDB
+		{74FEEB71-48F4-4060-BDD0-337BE43F6B8C}.Release|VisualGDB.ActiveCfg = Release|VisualGDB
+		{74FEEB71-48F4-4060-BDD0-337BE43F6B8C}.Release|VisualGDB.Build.0 = Release|VisualGDB
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EBBD50F9-D5B0-4FA9-AEA4-3CDBAAE5781A}
+	EndGlobalSection
+EndGlobal
