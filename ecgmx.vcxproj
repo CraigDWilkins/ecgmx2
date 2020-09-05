@@ -63,6 +63,7 @@
       <AdditionalOptions />
       <CLanguageStandard />
       <CPPLanguageStandard />
+      <Optimization>O3</Optimization>
     </ClCompile>
     <Link>
       <LibrarySearchDirectories>%(Link.LibrarySearchDirectories)</LibrarySearchDirectories>

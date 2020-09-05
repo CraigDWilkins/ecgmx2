@@ -201,6 +201,20 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles EXTI line4 interrupt.
+  */
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
+
+  /* USER CODE END EXTI4_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
+
+  /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
   * @brief This function handles DMA1 stream3 global interrupt.
   */
 void DMA1_Stream3_IRQHandler(void)
@@ -268,6 +282,12 @@ extern SPI_HandleTypeDef hspi2;
 void SPI2_IRQHandler(void)
 { 
 	HAL_SPI_IRQHandler(&hspi2);
+}
+
+extern TIM_HandleTypeDef htim1;
+void TIM1_IRQHandler(void)
+{ 
+	HAL_TIM_IRQHandler(&htim1);
 }
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

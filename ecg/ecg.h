@@ -14,8 +14,9 @@ EXTERNC void ecgInit(SPI_HandleTypeDef *handle, UART_HandleTypeDef *huart2);
 #define PrintText(text) {char buffer[] = (text);HAL_UART_Transmit_DMA(phuart2, (uint8_t *)buffer, sizeof(buffer));}
 
 #define PrintTextInt(text,integer) {char buffer[] = (text);\
-HAL_UART_Transmit_DMA(phuart2, (uint8_t *)buffer, sizeof(buffer));\
 char buf[10];itoa((integer),buf,10);\
+HAL_UART_Transmit_DMA(phuart2, (uint8_t *)buffer, sizeof(buffer)-1);\
+HAL_Delay(1);\
 HAL_UART_Transmit_DMA(phuart2, (uint8_t *)buf, strlen(buf));}
 
 #define PrintInt(integer) {char buf[10];itoa((integer),buf,10);HAL_UART_Transmit_DMA(phuart2, (uint8_t *)buf, strlen(buf));}

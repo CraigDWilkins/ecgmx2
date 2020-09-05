@@ -79,8 +79,16 @@ const float ADS1298::ECG_LSB_IN_MV = 0.0001430511475f;
 //
 //InterruptIn drdy(PA_4); // interrupt for data available pin
 EXTI_HandleTypeDef hexti;
-void InterruptHandler() {		// new interrupt function
+void InterruptHandlerECGDRDY() {		// new interrupt function
 	ADS1298::instance().interrupt();
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	/* Prevent unused argument(s) compilation warning */
+	UNUSED(GPIO_Pin);
+	__NVIC_ClearPendingIRQ(EXTI4_IRQn);
+	ADS1298::instance().interrupt();
+	
 }
 
 ADS1298::ADS1298()//:
@@ -155,6 +163,7 @@ void ADS1298::sendCommand(Command cmd){
 }
 
 bool ADS1298::start(SPI_HandleTypeDef *hspi, UART_HandleTypeDef *huart){//Serial *pc) {
+	disableIrq();
 	phuart2 = huart;
 	phspi2 = hspi;
 	pwdnHi();
@@ -183,14 +192,17 @@ bool ADS1298::start(SPI_HandleTypeDef *hspi, UART_HandleTypeDef *huart){//Serial
 	
 	uint8_t id = readReg(REG_ID);
 	//pc->printf("device ID: %d\n", id);
-	PrintText("here\n");
+
 	PrintTextInt("device ID: ", id); 
+	HAL_Delay(1);
 	PrintText("\n");
+	HAL_Delay(20);
 	if ((id >> 3) != 0x12 && (id >> 3)!= 0x1A){
 		//Wrong device signature
 		stop();
 		//pc->printf("Wrong device signature\n");
 		PrintText("Wrong device signature\n");
+		HAL_Delay(20);
 		return false;
 	}
 
@@ -200,6 +212,7 @@ bool ADS1298::start(SPI_HandleTypeDef *hspi, UART_HandleTypeDef *huart){//Serial
 		stop();
 		//pc->printf("Wrong channel number\n");
 		PrintText("Wrong channel number\n");
+		HAL_Delay(20);
 		return false;
 	}
 
@@ -371,7 +384,7 @@ void ADS1298::enableIrq(){
 	ExtiConfig.Trigger = EXTI_TRIGGER_FALLING;
 	ExtiConfig.GPIOSel = EXTI_GPIOA;
 	HAL_EXTI_SetConfigLine(&hexti, &ExtiConfig);
-	HAL_EXTI_RegisterCallback(&hexti, HAL_EXTI_COMMON_CB_ID, &InterruptHandler);
+	HAL_EXTI_RegisterCallback(&hexti, HAL_EXTI_COMMON_CB_ID, &InterruptHandlerECGDRDY);
 }
 
 float ADS1298::getLsbInMv(){

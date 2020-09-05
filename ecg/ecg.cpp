@@ -44,9 +44,7 @@
 Packetizer dataPacketizer;
 ECGSender ecgSender(dataPacketizer);
 
-#ifdef DEBUG
 UART_HandleTypeDef *phuart2;
-#endif
 void mainTaskCallbackInit(SPI_HandleTypeDef *hspi2, UART_HandleTypeDef *huart2)// const *args) 
 {
 
@@ -62,7 +60,7 @@ void mainTaskCallbackInit(SPI_HandleTypeDef *hspi2, UART_HandleTypeDef *huart2)/
 	PrintText("Test started\n\r");
 
 #endif
-    
+	phuart2 = huart2;
 	//Turn on ECG clock	
 	//done in main MX_TIM1_Init();
 	//clk.period_ticks(50); 	// chip frequency = 100 mhz / 50 = 2 mhz (which ads chip needs)

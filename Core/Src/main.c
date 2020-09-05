@@ -71,6 +71,8 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
+void ecgMain(void);
+void ecgInit(SPI_HandleTypeDef *handle, UART_HandleTypeDef *huart2);
 //char spi2Rx_TransferBuffer[256];
 //char spi2Tx_TransferBuffer[256];
 //void DMA1_Stream6_IRQHandler()
@@ -149,7 +151,7 @@ int main(void)
 	//__USART2_CLK_ENABLE();
 	//__GPIOA_CLK_ENABLE();
 
-	GPIO_InitTypeDef GPIO_InitStructure;
+	//GPIO_InitTypeDef GPIO_InitStructure;
 	//======================
 	   //usart dma1 setup 
 	
@@ -248,11 +250,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
 	//HAL_UART_TxCpltCallback() 
-
-
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+	
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+	
 	ecgInit(&hspi2, &huart2);
+//	HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3);
+//	MX_TIM1_Init();
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	
+	
 	while (1)
 	{
     /* USER CODE END WHILE */
@@ -409,6 +416,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -416,7 +424,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 	GPIO_InitTypeDef GPIO_InitStructure = { 0 };
 	GPIO_InitStructure.Pin = GPIO_PIN_10;
-	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;  //GPIO_MODE_AF_OD; //GPIO_MODE_AF_PP;  //GPIO_MODE_OUTPUT_PP;//
+	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;   //GPIO_MODE_AF_OD; //GPIO_MODE_AF_PP;  //GPIO_MODE_OUTPUT_PP;//
 	GPIO_InitStructure.Pull = GPIO_NOPULL;
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -428,6 +436,15 @@ static void MX_TIM1_Init(void)
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -557,8 +574,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA4 PA5 PA9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_9;
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA5 PA9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -570,8 +593,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB10 PB12 PB6 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_12|GPIO_PIN_6|GPIO_PIN_7;
+  /*Configure GPIO pin : PB10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB12 PB6 PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_6|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -583,6 +613,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -592,6 +626,9 @@ static void MX_GPIO_Init(void)
 //		s_TransferBuffer[i] = (s_FrameCounter << 8) | (i & 0xFF);
 //	s_FrameCounter++;
 //}
+
+
+
 /* USER CODE END 4 */
 
 /**
@@ -601,7 +638,7 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-	  /* User can add his own implementation to report the HAL error return state */
+		/* User can add his own implementation to report the HAL error return state */
 
   /* USER CODE END Error_Handler_Debug */
 }
@@ -617,8 +654,8 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-	  /* User can add his own implementation to report the file name and line number,
-	     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+		/* User can add his own implementation to report the file name and line number,
+		   tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

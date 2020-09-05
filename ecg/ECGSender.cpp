@@ -26,10 +26,10 @@
 
 const int ECGSender::ECG_CHOP_BITS = 5;
 
-ECGSender::ECGSender(Packetizer &iPacketizer):
-	compressFifo((char*)compressBuffer, ECG_COMPRESS_OUTPUT_BUFFER_SIZE),
-	compressor(compressFifo, ecgPredictor),
-	testGenerator(15000,500)
+ECGSender::ECGSender(Packetizer &iPacketizer)
+	: compressFifo((char*)compressBuffer, ECG_COMPRESS_OUTPUT_BUFFER_SIZE)
+	, compressor(compressFifo, ecgPredictor)
+	, testGenerator(15000, 500)
 {
 	packetizer = &iPacketizer;
 	testSignal = false;
@@ -39,10 +39,12 @@ ECGSender::ECGSender(Packetizer &iPacketizer):
 
 ECGSender::~ECGSender() {
 }
-
+static uint8_t buf0[2][ECG_COMPRESS_OUTPUT_BUFFER_SIZE];
+static uint8_t bufNo = 0;
 void ECGSender::send(UART_HandleTypeDef *phuart2) {
 	//Serial *pc){
 	//Create header and calculate data size
+	uint16_t bufCnt = 0;
 	uint8_t header[Packetizer::HEADER_SIZE + sizeof(ECGHeader)];
 	ECGHeader *ecgHeader = (ECGHeader *)(header + Packetizer::HEADER_SIZE);
 
@@ -51,14 +53,14 @@ void ECGSender::send(UART_HandleTypeDef *phuart2) {
 	ecgHeader->channelCount = ADS1298::instance().getActiveChannels();
 
 	uint32_t size = ADS1298::instance().getAvailableData();
-	uint32_t blockSize = (ecgHeader->channelCount+1)*3;
+	uint32_t blockSize = (ecgHeader->channelCount + 1) * 3;
 
-	if (size>ECG_MAX_SEND_SIZE)
-		size=ECG_MAX_SEND_SIZE;
+	if (size > ECG_MAX_SEND_SIZE)
+		size = ECG_MAX_SEND_SIZE;
 
 	ecgHeader->sampleCount = size / blockSize;
 
-	if (size==0){
+	if (size == 0) {
 		return;
 	}
 
@@ -68,19 +70,19 @@ void ECGSender::send(UART_HandleTypeDef *phuart2) {
 	ecgPredictor.setNumChannels(ecgHeader->channelCount);
 	compressor.setNumChannels(ecgHeader->channelCount);
 
-	ADS1298 &ecg=ADS1298::instance();
+	ADS1298 &ecg = ADS1298::instance();
 	//Compress
-	for (unsigned pos=0; pos<size; pos+=blockSize){
+	for(unsigned pos = 0 ; pos < size ; pos += blockSize) {
 		ecg.getSample(sampleOfChannels);
 
-		if (testSignal){
-			for (int a=0; a<ecgHeader->channelCount; a++){
-				sampleOfChannels[a]=testGenerator.getSample(testGenerator.getPeriod()*a/ecgHeader->channelCount);
+		if (testSignal) {
+			for (int a = 0; a < ecgHeader->channelCount; a++) {
+				sampleOfChannels[a] = testGenerator.getSample(testGenerator.getPeriod()*a / ecgHeader->channelCount);
 				testGenerator.next();
 			}
 		}
 
-		for (int a=0; a<ecgHeader->channelCount; a++){
+		for (int a = 0; a < ecgHeader->channelCount; a++) {
 			sampleOfChannels[a] >>= ECG_CHOP_BITS;
 		}
 		//Compress
@@ -88,65 +90,76 @@ void ECGSender::send(UART_HandleTypeDef *phuart2) {
 	}
 
 	ecgHeader->numBits = compressFifo.getAvailableBits();
-	size = (ecgHeader->numBits+7) / 8;
-	#ifdef DEBUG
+	size = (ecgHeader->numBits + 7) / 8;
+#ifdef DEBUG
 	//	pc->printf("Sending packet.\n");
 	PrintText("Sending packet.\n");
-	#endif
+#endif
 
 	//Send header
-	packetizer->startPacket(header, Packetizer::ECG, (uint16_t)(size+sizeof(ECGHeader)));
+	packetizer->startPacket(header, Packetizer::ECG, (uint16_t)(size + sizeof(ECGHeader)));
 	packetizer->checksumBlock((uint8_t*)ecgHeader, sizeof(ECGHeader));
-	#ifdef DEBUG
-   // 	pc->printf("Packet size: %d \n", (Packetizer::HEADER_SIZE + sizeof(ECGHeader)));
-	PrintTextInt("Packet size : ", (Packetizer::HEADER_SIZE + sizeof(ECGHeader)));
+#ifdef DEBUG
+	// 	pc->printf("Packet size: %d \n", (Packetizer::HEADER_SIZE + sizeof(ECGHeader)));
+	 PrintTextInt("Packet size : ", (Packetizer::HEADER_SIZE + sizeof(ECGHeader)));
 	PrintText("\n");
-    #endif
+#endif
 
-    for (unsigned int i = 0; i < (Packetizer::HEADER_SIZE + sizeof(ECGHeader)); i++)
-    {
-       // pc->putc(header[i]);
-	    PrintC(header[i]);
-    }
-
+	//    for (unsigned int i = 0; i < (Packetizer::HEADER_SIZE + sizeof(ECGHeader)); i++)
+	//    {
+	//       // pc->putc(header[i]);
+	//	    PrintC(header[i]);
+	//    }
+	memmove(buf0[bufNo], header, (Packetizer::HEADER_SIZE + sizeof(ECGHeader)));
+	bufCnt = Packetizer::HEADER_SIZE + sizeof(ECGHeader);
+		//HAL_UART_Transmit_DMA(phuart2, header, (Packetizer::HEADER_SIZE + sizeof(ECGHeader)));
 	//Calculate checksum over compressBuffer and add to final checksum value
 	packetizer->checksumBlock(compressBuffer, size);
-	#ifdef DEBUG
+#ifdef DEBUG
 	//	pc->printf("\nCompressBuffer Size: %d\n", size);
 	PrintTextInt("\nCompressBuffer Size: ", size);
 	PrintText("\n");
-	#endif
+#endif
 
-    for (unsigned int i = 0; i < size; i++)
-    {
-       // pc->putc(compressBuffer[i]);
-	    PrintC(compressBuffer[i]);
-	}
-	
+	//    for (unsigned int i = 0; i < size; i++)
+	//    {
+	//       // pc->putc(compressBuffer[i]);
+	//	    PrintC(compressBuffer[i]);
+	//	}
+		//HAL_UART_Transmit_DMA(phuart2, compressBuffer, size);
+	memmove(&buf0[bufNo][bufCnt], compressBuffer, size);
+	bufCnt += size;
 	//Send checksum
 	Packetizer::Checksum chksum = packetizer->getChecksum();
-	#ifdef DEBUG
-		//pc->printf("\nCompressBuffer Size: %d\n", size);
-	PrintTextInt("\nCompressBuffer Size: ", size);
+#ifdef DEBUG
+	//pc->printf("\nCompressBuffer Size: %d\n", size);
+PrintTextInt("\nCompressBuffer Size: ", size);
 	PrintText("\n");
-	#endif
-
-    for (unsigned int i = 0; i < sizeof(chksum); i++)
-    {
-	    // pc->putc((char)((chksum >> (8*i)) & 0x00FF));
-		 char c = (char)((chksum >> (8*i)) & 0x00FF);
-	    PrintC(c);
-	}
-	
-	#ifdef DEBUG
+#endif
+//	size_t j = sizeof(chksum);
+//	for (unsigned int i = 0; i < sizeof(chksum); i++)
+//	{
+//		// pc->putc((char)((chksum >> (8*i)) & 0x00FF));
+//		 char c = (char)((chksum >> (8*i)) & 0x00FF);
+//		PrintC(c);
+//	}
+	//char bufs[3];
+	buf0[bufNo][bufCnt++] = chksum  & 0x00FF;
+	buf0[bufNo][bufCnt++] = (chksum >> 8) & 0x00FF;
+	//bufs[0] = (chksum  & 0x00FF);
+	//bufs[1] = (chksum >> 8) & 0x00FF;
+	//HAL_UART_Transmit_DMA(phuart2,(uint8_t*)bufs, 2);
+	HAL_UART_Transmit_DMA(phuart2, buf0[bufNo], bufCnt);
+	bufNo = 1 - bufNo;
+#ifdef DEBUG
     //	pc->printf("Size: %d\n", size); 
 	PrintTextInt("Size: ", size);
 	PrintText("\n");
-    //	pc->printf("Length: %d\n", (uint16_t)(size+sizeof(ECGHeader)));
+	//	pc->printf("Length: %d\n", (uint16_t)(size+sizeof(ECGHeader)));
 	PrintTextInt("Length: ", (uint16_t)(size + sizeof(ECGHeader)));
 	PrintText("\n");
-    //	pc->printf("Checksum is %d\n", chksum);
+	//	pc->printf("Checksum is %d\n", chksum);
 	PrintTextInt("Checksum is ", chksum);
 	PrintText("\n");
-    #endif
+#endif
 }
